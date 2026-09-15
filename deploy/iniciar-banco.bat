@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 echo Iniciando PostgreSQL...
-docker compose up -d
+docker compose up -d postgres
 if errorlevel 1 (
   echo Falha ao iniciar o banco. Verifique se o Docker Desktop esta em execucao.
   pause

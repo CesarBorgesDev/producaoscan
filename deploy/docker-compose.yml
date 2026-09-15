@@ -1,3 +1,5 @@
+name: producaoscan
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -17,6 +19,45 @@ services:
       interval: 5s
       timeout: 5s
       retries: 12
+
+  backend:
+    build:
+      context: ../backend
+    container_name: producaoscan-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-producao}:${POSTGRES_PASSWORD:-producao}@postgres:5432/${POSTGRES_DB:-producaoscan}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      HOST: 0.0.0.0
+      PORT: "8000"
+    ports:
+      - "${BACKEND_PORT:-3000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=5)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: producaoscan-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3001}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
 
 volumes:
   pgdata:
