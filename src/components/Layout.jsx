@@ -31,7 +31,6 @@ export default function Layout() {
                 <p className="text-sm font-semibold tracking-tight text-slate-900">
                   Controle de Produção
                 </p>
-                <p className="text-[11px] text-muted-foreground">Padrão Toledo · EAN-13</p>
               </div>
             </NavLink>
 
