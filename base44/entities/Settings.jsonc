@@ -1,0 +1,27 @@
+{
+  "name": "Settings",
+  "type": "object",
+  "properties": {
+    "pg_host": {
+      "type": "string",
+      "title": "Host / IP do PostgreSQL"
+    },
+    "pg_port": {
+      "type": "number",
+      "default": 5432,
+      "title": "Porta"
+    },
+    "pg_database": {
+      "type": "string",
+      "title": "Banco de dados"
+    },
+    "pg_username": {
+      "type": "string",
+      "title": "Usu\u00e1rio"
+    },
+    "pg_password": {
+      "type": "string",
+      "title": "Senha"
+    }
+  }
+}

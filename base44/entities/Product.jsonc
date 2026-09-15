@@ -1,0 +1,29 @@
+{
+  "name": "Product",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "title": "C\u00f3digo Toledo",
+      "description": "C\u00f3digo de 5 d\u00edgitos embutido na etiqueta Toledo"
+    },
+    "name": {
+      "type": "string",
+      "title": "Nome do produto"
+    },
+    "category": {
+      "type": "string",
+      "title": "Categoria"
+    },
+    "unit_price": {
+      "type": "number",
+      "title": "Pre\u00e7o por kg (R$)",
+      "description": "Pre\u00e7o por quilograma"
+    }
+  },
+  "required": [
+    "code",
+    "name",
+    "unit_price"
+  ]
+}

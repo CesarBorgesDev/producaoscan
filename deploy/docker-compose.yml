@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: producaoscan-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-producao}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-producao}
+      POSTGRES_DB: ${POSTGRES_DB:-producaoscan}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-producao} -d ${POSTGRES_DB:-producaoscan}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pgdata:

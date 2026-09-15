@@ -1,0 +1,43 @@
+{
+  "name": "Production",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "title": "Identifica\u00e7\u00e3o"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "em_andamento",
+        "concluida"
+      ],
+      "default": "em_andamento",
+      "title": "Status"
+    },
+    "production_date": {
+      "type": "string",
+      "format": "date",
+      "title": "Data da produ\u00e7\u00e3o"
+    },
+    "item_count": {
+      "type": "number",
+      "default": 0,
+      "title": "Quantidade de itens"
+    },
+    "total_weight": {
+      "type": "number",
+      "default": 0,
+      "title": "Peso total (kg)"
+    },
+    "total_price": {
+      "type": "number",
+      "default": 0,
+      "title": "Valor total (R$)"
+    }
+  },
+  "required": [
+    "label",
+    "status"
+  ]
+}
