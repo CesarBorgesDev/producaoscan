@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS catalogo_origem (
     nome VARCHAR(255) NOT NULL,
     categoria VARCHAR(100),
     preco_kg NUMERIC(12, 2) NOT NULL,
+    ippt VARCHAR(1) NOT NULL DEFAULT 'P',
     criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

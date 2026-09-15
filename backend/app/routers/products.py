@@ -19,6 +19,13 @@ def list_products(q: str | None = None, db: Session = Depends(get_db)):
     return query.all()
 
 
+@router.delete("", status_code=200)
+def delete_all_products(db: Session = Depends(get_db)):
+    deleted = db.query(Product).delete(synchronize_session=False)
+    db.commit()
+    return {"ok": True, "deleted": deleted}
+
+
 @router.post("", response_model=ProductOut, status_code=201)
 def create_product(payload: ProductIn, db: Session = Depends(get_db)):
     code = payload.code.strip()

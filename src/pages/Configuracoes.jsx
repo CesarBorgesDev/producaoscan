@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Save, Database, Server, Wifi, CloudDownload, Upload } from "lucide-react";
+import { Save, Database, Server, Wifi, CloudDownload, Upload, Trash2 } from "lucide-react";
 
 const defaults = {
   pg_host: "",
@@ -103,6 +103,27 @@ export default function Configuracoes() {
     } catch (err) {
       setStatus(err.message);
       toast({ title: "Erro na importação", description: err.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDeleteProducts = async () => {
+    if (
+      !window.confirm(
+        "Apagar todos os produtos do cadastro? Esta ação não remove as produções já coletadas."
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await api.deleteAllProducts();
+      setStatus(`Cadastro limpo: ${result.deleted || 0} produto(s) apagado(s).`);
+      toast({ title: "Produtos apagados" });
+    } catch (err) {
+      setStatus(err.message);
+      toast({ title: "Erro ao apagar produtos", description: err.message, variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -249,6 +270,16 @@ export default function Configuracoes() {
                 >
                   <Upload className="w-4 h-4" />
                   Importar CSV/JSON
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  className="gap-2 text-destructive hover:text-destructive"
+                  onClick={handleDeleteProducts}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Apagar produtos
                 </Button>
                 <input
                   ref={fileRef}

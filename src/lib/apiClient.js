@@ -82,6 +82,7 @@ export const api = {
   createProduct: (payload) => request("/api/products", { method: "POST", body: payload }),
   updateProduct: (id, payload) => request(`/api/products/${id}`, { method: "PUT", body: payload }),
   deleteProduct: (id) => request(`/api/products/${id}`, { method: "DELETE" }),
+  deleteAllProducts: () => request("/api/products", { method: "DELETE" }),
 
   listProductions: (includeDeleted = false) =>
     request(`/api/productions${includeDeleted ? "?include_deleted=true" : ""}`),

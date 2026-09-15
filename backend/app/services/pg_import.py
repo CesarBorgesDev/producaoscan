@@ -15,6 +15,7 @@ CODE_KEYS = ("codigo", "code", "cod", "produto_codigo")
 NAME_KEYS = ("nome", "name", "descricao", "description", "produto")
 CATEGORY_KEYS = ("categoria", "category", "grupo")
 PRICE_KEYS = ("preco_kg", "unit_price", "preco", "price", "valor")
+IPPT_KEYS = ("ippt",)
 
 
 def get_or_create_settings(db: Session) -> AppSettings:
@@ -68,6 +69,13 @@ def _pick(row: dict[str, Any], keys: tuple[str, ...]) -> Any:
     return None
 
 
+def _ippt_is_p(row: dict[str, Any]) -> bool:
+    value = _pick(row, IPPT_KEYS)
+    if value is None:
+        return False
+    return str(value).strip().upper() == "P"
+
+
 def _normalize_row(row: dict[str, Any]) -> dict | None:
     code = _pick(row, CODE_KEYS)
     name = _pick(row, NAME_KEYS)
@@ -90,6 +98,9 @@ def _normalize_row(row: dict[str, Any]) -> dict | None:
 def upsert_products(db: Session, rows: list[dict], source: str, filename: str) -> dict:
     imported = updated = skipped = 0
     for raw in rows:
+        if not _ippt_is_p(raw):
+            skipped += 1
+            continue
         data = _normalize_row(raw)
         if not data:
             skipped += 1
@@ -130,10 +141,30 @@ def import_from_postgresql(db: Session, table_name: str | None = None) -> dict:
     with _connect(cfg) as conn:
         with conn.cursor() as cur:
             cur.execute(
-                sql.SQL("SELECT * FROM {}").format(sql.Identifier(table))
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND lower(table_name) = lower(%s)
+                """,
+                (table,),
             )
-            columns = [desc[0] for desc in cur.description]
-            fetched = [dict(zip(columns, row)) for row in cur.fetchall()]
+            columns = [row[0] for row in cur.fetchall()]
+            if not columns:
+                raise ValueError(f"Tabela '{table}' não encontrada.")
+            ippt_col = next((col for col in columns if col.lower() == "ippt"), None)
+            if not ippt_col:
+                raise ValueError(
+                    f"A tabela '{table}' não possui o campo ippt. "
+                    "A importação inclui somente produtos com ippt = P."
+                )
+            cur.execute(
+                sql.SQL("SELECT * FROM {} WHERE UPPER(BTRIM({}::text)) = 'P'").format(
+                    sql.Identifier(table),
+                    sql.Identifier(ippt_col),
+                )
+            )
+            fetched_cols = [desc[0] for desc in cur.description]
+            fetched = [dict(zip(fetched_cols, row)) for row in cur.fetchall()]
 
     return upsert_products(db, fetched, "postgresql", table)
 
