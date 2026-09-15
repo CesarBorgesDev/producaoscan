@@ -15,7 +15,12 @@ export const AuthProvider = ({ children }) => {
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
-    checkAppState();
+    setIsLoadingPublicSettings(false);
+    setIsLoadingAuth(false);
+    setIsAuthenticated(true);
+    setAuthChecked(true);
+    setAuthError(null);
+    setUser({ email: "operador@local", full_name: "Operador" });
   }, []);
 
   const checkAppState = async () => {
