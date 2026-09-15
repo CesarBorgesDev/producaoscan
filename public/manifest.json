@@ -1,6 +1,6 @@
 {
-  "name": "Controle de Produção",
-  "short_name": "Produção",
+  "name": "Controle de Produções DAMA",
+  "short_name": "Produção DAMA",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
