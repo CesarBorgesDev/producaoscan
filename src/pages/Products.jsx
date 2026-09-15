@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
 import { formatBRL } from "@/lib/toledo";
+import { api } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Plus, Pencil, Trash2, Package, Search } from "lucide-react";
@@ -29,13 +28,14 @@ export default function Products() {
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (q = "") => {
     setLoading(true);
     try {
-      const data = await base44.entities.Product.list("-created_date", 500);
+      const data = await api.listProducts(q);
       setProducts(data);
-    } catch {
+    } catch (err) {
       setProducts([]);
+      toast({ title: "Erro ao carregar produtos", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -87,11 +87,11 @@ export default function Products() {
     };
     try {
       if (editing) {
-        const updated = await base44.entities.Product.update(editing.id, payload);
+        const updated = await api.updateProduct(editing.id, payload);
         setProducts((prev) => prev.map((p) => (p.id === editing.id ? updated : p)));
         toast({ title: "Produto atualizado" });
       } else {
-        const created = await base44.entities.Product.create(payload);
+        const created = await api.createProduct(payload);
         setProducts((prev) => [created, ...prev]);
         toast({ title: "Produto cadastrado" });
       }
@@ -109,7 +109,7 @@ export default function Products() {
 
   const handleDelete = async (p) => {
     try {
-      await base44.entities.Product.delete(p.id);
+      await api.deleteProduct(p.id);
       setProducts((prev) => prev.filter((x) => x.id !== p.id));
       toast({ title: "Produto removido" });
     } catch {
@@ -139,6 +139,9 @@ export default function Products() {
         <Input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") load(query.trim());
+          }}
           placeholder="Buscar por nome, código ou categoria…"
           className="pl-9"
         />

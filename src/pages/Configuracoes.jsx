@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { base44 } from "@/api/base44Client";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { api } from "@/lib/apiClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Save, Database, Server } from "lucide-react";
+import { Save, Database, Server, Wifi, CloudDownload, Upload } from "lucide-react";
 
 const defaults = {
   pg_host: "",
@@ -13,32 +13,32 @@ const defaults = {
   pg_database: "",
   pg_username: "",
   pg_password: "",
+  source_table: "catalogo_origem",
 };
 
 export default function Configuracoes() {
-  const [settingsId, setSettingsId] = useState(null);
   const [form, setForm] = useState(defaults);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
+  const fileRef = useRef(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await base44.entities.Settings.list("-created_date", 1);
-      const s = list && list[0];
-      if (s) {
-        setSettingsId(s.id);
-        setForm({
-          pg_host: s.pg_host || "",
-          pg_port: s.pg_port ?? 5432,
-          pg_database: s.pg_database || "",
-          pg_username: s.pg_username || "",
-          pg_password: s.pg_password || "",
-        });
-      }
-    } catch {
-      // sem registros ainda
+      const s = await api.getSettings();
+      setForm({
+        pg_host: s.pg_host || "",
+        pg_port: s.pg_port ?? 5432,
+        pg_database: s.pg_database || "",
+        pg_username: s.pg_username || "",
+        pg_password: s.pg_password || "",
+        source_table: s.source_table || "catalogo_origem",
+      });
+    } catch (err) {
+      setStatus(err.message);
     } finally {
       setLoading(false);
     }
@@ -48,6 +48,15 @@ export default function Configuracoes() {
     load();
   }, [load]);
 
+  const payload = () => ({
+    pg_host: form.pg_host.trim(),
+    pg_port: Number(form.pg_port) || 5432,
+    pg_database: form.pg_database.trim(),
+    pg_username: form.pg_username.trim(),
+    pg_password: form.pg_password,
+    source_table: form.source_table.trim() || "catalogo_origem",
+  });
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!form.pg_host.trim()) {
@@ -55,25 +64,66 @@ export default function Configuracoes() {
       return;
     }
     setSaving(true);
-    const payload = {
-      pg_host: form.pg_host.trim(),
-      pg_port: Number(form.pg_port) || 5432,
-      pg_database: form.pg_database.trim(),
-      pg_username: form.pg_username.trim(),
-      pg_password: form.pg_password,
-    };
     try {
-      if (settingsId) {
-        await base44.entities.Settings.update(settingsId, payload);
-      } else {
-        const created = await base44.entities.Settings.create(payload);
-        setSettingsId(created.id);
-      }
+      await api.saveSettings(payload());
+      setStatus("Configurações salvas.");
       toast({ title: "Configurações salvas" });
-    } catch {
-      toast({ title: "Erro ao salvar", variant: "destructive" });
+    } catch (err) {
+      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setBusy(true);
+    try {
+      await api.saveSettings(payload());
+      const result = await api.testConnection();
+      const tables = Array.isArray(result.tables) ? result.tables.join(", ") : "";
+      setStatus(`${result.message || "Conexão OK."}${tables ? `\nTabelas: ${tables}` : ""}`);
+      toast({ title: "Conexão testada" });
+    } catch (err) {
+      setStatus(err.message);
+      toast({ title: "Falha na conexão", description: err.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImportPg = async () => {
+    setBusy(true);
+    try {
+      await api.saveSettings(payload());
+      const result = await api.importFromPostgres(form.source_table.trim());
+      setStatus(
+        `Importação PostgreSQL: ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.`
+      );
+      toast({ title: "Catálogo importado" });
+    } catch (err) {
+      setStatus(err.message);
+      toast({ title: "Erro na importação", description: err.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    try {
+      const result = await api.importFile(file);
+      setStatus(
+        `Arquivo ${file.name}: ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.`
+      );
+      toast({ title: "Arquivo importado" });
+    } catch (err) {
+      setStatus(err.message);
+      toast({ title: "Erro ao importar arquivo", description: err.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -84,7 +134,7 @@ export default function Configuracoes() {
           Configurações
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Parâmetros de comunicação com o banco de dados PostgreSQL.
+          Conexão PostgreSQL usada na importação do catálogo e no envio das produções (Uniplus).
         </p>
       </div>
 
@@ -95,7 +145,7 @@ export default function Configuracoes() {
               <Database className="w-4 h-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Conexão PostgreSQL</CardTitle>
+              <CardTitle className="text-base">PostgreSQL (catálogo e envio da produção)</CardTitle>
               <CardDescription>Informe o endereço do servidor de banco de dados.</CardDescription>
             </div>
           </div>
@@ -166,16 +216,58 @@ export default function Configuracoes() {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="source_table">Tabela de origem</Label>
+                <Input
+                  id="source_table"
+                  value={form.source_table}
+                  onChange={(e) => setForm({ ...form, source_table: e.target.value })}
+                  placeholder="catalogo_origem"
+                  className="font-mono"
+                />
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button type="submit" disabled={saving} className="gap-2">
                   <Save className="w-4 h-4" />
-                  {saving ? "Salvando…" : "Salvar configurações"}
+                  {saving ? "Salvando…" : "Salvar"}
                 </Button>
+                <Button type="button" variant="outline" disabled={busy} onClick={handleTest} className="gap-2">
+                  <Wifi className="w-4 h-4" />
+                  Testar conexão
+                </Button>
+                <Button type="button" disabled={busy} onClick={handleImportPg} className="gap-2">
+                  <CloudDownload className="w-4 h-4" />
+                  Importar do PostgreSQL
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  className="gap-2"
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="w-4 h-4" />
+                  Importar CSV/JSON
+                </Button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".csv,.json,text/csv,application/json"
+                  className="hidden"
+                  onChange={handleImportFile}
+                />
               </div>
             </form>
           )}
         </CardContent>
       </Card>
+
+      {status && (
+        <Card className="shadow-sm">
+          <CardContent className="p-4 text-sm whitespace-pre-wrap">{status}</CardContent>
+        </Card>
+      )}
     </div>
   );
 }
