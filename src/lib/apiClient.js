@@ -86,6 +86,11 @@ export const api = {
 
   listProductions: (includeDeleted = false) =>
     request(`/api/productions${includeDeleted ? "?include_deleted=true" : ""}`),
+  getDashboard: (days = 14, asOf) => {
+    const params = new URLSearchParams({ days: String(days) });
+    if (asOf) params.set("as_of", asOf);
+    return request(`/api/productions/dashboard?${params}`);
+  },
   createProduction: (payload) => request("/api/productions", { method: "POST", body: payload }),
   getProduction: (id) => request(`/api/productions/${id}`),
   updateProduction: (id, payload) => request(`/api/productions/${id}`, { method: "PUT", body: payload }),

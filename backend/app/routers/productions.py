@@ -1,12 +1,24 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
 from ..models import Product, Production, ProductionItem
-from ..schemas import ExportResult, ProductionIn, ProductionItemOut, ProductionOut, ScanIn
+from ..schemas import (
+    DashboardDay,
+    DashboardOut,
+    DashboardStatus,
+    DashboardTopProduct,
+    DashboardTotals,
+    ExportResult,
+    ProductionIn,
+    ProductionItemOut,
+    ProductionOut,
+    ScanIn,
+)
 from ..services.pdf import build_production_pdf
 from ..services.pg_export import export_production
 from ..toledo import parse_toledo_barcode
@@ -52,6 +64,29 @@ def _ensure_not_exported(production: Production) -> None:
         raise HTTPException(409, "Produção enviada ao Uniplus — alteração e exclusão bloqueadas.")
 
 
+def _active(query):
+    return query.filter(Production.status != "excluida")
+
+
+def _totals(db: Session, *filters) -> DashboardTotals:
+    row = (
+        _active(db.query(
+            func.count(Production.id),
+            func.coalesce(func.sum(Production.item_count), 0),
+            func.coalesce(func.sum(Production.total_weight), 0.0),
+            func.coalesce(func.sum(Production.total_price), 0.0),
+        ))
+        .filter(*filters)
+        .one()
+    )
+    return DashboardTotals(
+        productions=int(row[0] or 0),
+        items=int(row[1] or 0),
+        weight=round(float(row[2] or 0), 3),
+        value=round(float(row[3] or 0), 2),
+    )
+
+
 @router.get("", response_model=list[ProductionOut])
 def list_productions(
     include_deleted: bool = Query(False),
@@ -64,6 +99,156 @@ def list_productions(
     elif not include_deleted:
         query = query.filter(Production.status != "excluida")
     return query.order_by(Production.created_at.desc()).all()
+
+
+@router.get("/dashboard", response_model=DashboardOut)
+def production_dashboard(
+    days: int = Query(14, ge=1, le=90),
+    as_of: date | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    today = as_of or date.today()
+    start = today - timedelta(days=days - 1)
+    prev_end = start - timedelta(days=1)
+    prev_start = prev_end - timedelta(days=days - 1)
+    yesterday = today - timedelta(days=1)
+
+    daily_rows = (
+        _active(
+            db.query(
+                Production.production_date,
+                func.count(Production.id),
+                func.coalesce(func.sum(Production.item_count), 0),
+                func.coalesce(func.sum(Production.total_weight), 0.0),
+                func.coalesce(func.sum(Production.total_price), 0.0),
+            )
+        )
+        .filter(Production.production_date >= start, Production.production_date <= today)
+        .group_by(Production.production_date)
+        .all()
+    )
+    by_date = {row[0]: row for row in daily_rows}
+    series: list[DashboardDay] = []
+    cursor = start
+    while cursor <= today:
+        row = by_date.get(cursor)
+        series.append(
+            DashboardDay(
+                date=cursor,
+                productions=int(row[1] or 0) if row else 0,
+                items=int(row[2] or 0) if row else 0,
+                weight=round(float(row[3] or 0), 3) if row else 0,
+                value=round(float(row[4] or 0), 2) if row else 0,
+            )
+        )
+        cursor += timedelta(days=1)
+
+    status_rows = (
+        _active(
+            db.query(
+                Production.status,
+                func.count(Production.id),
+                func.coalesce(func.sum(Production.item_count), 0),
+                func.coalesce(func.sum(Production.total_weight), 0.0),
+                func.coalesce(func.sum(Production.total_price), 0.0),
+            )
+        )
+        .filter(Production.production_date >= start, Production.production_date <= today)
+        .group_by(Production.status)
+        .all()
+    )
+    by_status = [
+        DashboardStatus(
+            status=row[0],
+            count=int(row[1] or 0),
+            items=int(row[2] or 0),
+            weight=round(float(row[3] or 0), 3),
+            value=round(float(row[4] or 0), 2),
+        )
+        for row in status_rows
+    ]
+
+    top_rows = (
+        db.query(
+            ProductionItem.product_code,
+            func.max(ProductionItem.product_name),
+            func.count(ProductionItem.id),
+            func.coalesce(func.sum(ProductionItem.weight_kg), 0.0),
+            func.coalesce(func.sum(ProductionItem.total_price), 0.0),
+        )
+        .join(Production, ProductionItem.production_id == Production.id)
+        .filter(
+            Production.status != "excluida",
+            Production.production_date >= start,
+            Production.production_date <= today,
+        )
+        .group_by(ProductionItem.product_code)
+        .order_by(func.sum(ProductionItem.total_price).desc())
+        .limit(8)
+        .all()
+    )
+    top_products = [
+        DashboardTopProduct(
+            product_code=row[0],
+            product_name=row[1] or row[0],
+            items=int(row[2] or 0),
+            weight=round(float(row[3] or 0), 3),
+            value=round(float(row[4] or 0), 2),
+        )
+        for row in top_rows
+    ]
+
+    open_production = (
+        db.query(Production)
+        .filter(Production.status == "em_andamento")
+        .order_by(Production.created_at.desc())
+        .first()
+    )
+    recent = (
+        _active(db.query(Production))
+        .order_by(Production.created_at.desc())
+        .limit(6)
+        .all()
+    )
+    pending_export = (
+        db.query(func.count(Production.id))
+        .filter(
+            Production.status == "concluida",
+            Production.exported_pg_id.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+    deleted_count = (
+        db.query(func.count(Production.id)).filter(Production.status == "excluida").scalar() or 0
+    )
+    catalog_products = db.query(func.count(Product.id)).scalar() or 0
+
+    return DashboardOut(
+        days=days,
+        from_date=start,
+        to_date=today,
+        today=_totals(db, Production.production_date == today),
+        yesterday=_totals(db, Production.production_date == yesterday),
+        period=_totals(
+            db,
+            Production.production_date >= start,
+            Production.production_date <= today,
+        ),
+        previous_period=_totals(
+            db,
+            Production.production_date >= prev_start,
+            Production.production_date <= prev_end,
+        ),
+        catalog_products=int(catalog_products),
+        pending_export=int(pending_export),
+        deleted_count=int(deleted_count),
+        open_production=open_production,
+        series=series,
+        by_status=by_status,
+        top_products=top_products,
+        recent=recent,
+    )
 
 
 @router.post("", response_model=ProductionOut, status_code=201)

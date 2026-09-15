@@ -104,3 +104,52 @@ class ExportResult(BaseModel):
     items: int
     message: str
     unmatched: list[str] = Field(default_factory=list)
+
+
+class DashboardTotals(BaseModel):
+    productions: int = 0
+    items: int = 0
+    weight: float = 0
+    value: float = 0
+
+
+class DashboardDay(BaseModel):
+    date: date
+    productions: int = 0
+    items: int = 0
+    weight: float = 0
+    value: float = 0
+
+
+class DashboardStatus(BaseModel):
+    status: str
+    count: int = 0
+    items: int = 0
+    weight: float = 0
+    value: float = 0
+
+
+class DashboardTopProduct(BaseModel):
+    product_code: str
+    product_name: str
+    items: int = 0
+    weight: float = 0
+    value: float = 0
+
+
+class DashboardOut(BaseModel):
+    days: int
+    from_date: date
+    to_date: date
+    today: DashboardTotals
+    yesterday: DashboardTotals
+    period: DashboardTotals
+    previous_period: DashboardTotals
+    catalog_products: int = 0
+    pending_export: int = 0
+    deleted_count: int = 0
+    open_production: ProductionOut | None = None
+    series: list[DashboardDay] = Field(default_factory=list)
+    by_status: list[DashboardStatus] = Field(default_factory=list)
+    top_products: list[DashboardTopProduct] = Field(default_factory=list)
+    recent: list[ProductionOut] = Field(default_factory=list)
