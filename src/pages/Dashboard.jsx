@@ -27,7 +27,6 @@ import {
   ArrowRight,
   Cloud,
   LayoutDashboard,
-  Package,
   Play,
   Plus,
   Receipt,
@@ -56,7 +55,7 @@ function emptyTotals() {
 function changePct(current, previous) {
   const now = Number(current) || 0;
   const before = Number(previous) || 0;
-  if (before === 0) return now === 0 ? 0 : 100;
+  if (before === 0) return now === 0 ? 0 : null;
   return ((now - before) / before) * 100;
 }
 
@@ -244,7 +243,7 @@ export default function Dashboard() {
           deltaLabel="vs período anterior"
         />
         <KpiCard
-          title="Pendências"
+          title="A enviar ao Uniplus"
           icon={Cloud}
           value={String(data?.pending_export ?? 0)}
           hint={`${data?.catalog_products ?? 0} produtos no catálogo`}

@@ -6,6 +6,7 @@ import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
 import ScrollToTop from '@/components/ScrollToTop';
 import Layout from '@/components/Layout';
+import Dashboard from '@/pages/Dashboard';
 import Home from '@/pages/Home';
 import Producao from '@/pages/Producao';
 import Products from '@/pages/Products';
@@ -20,6 +21,7 @@ function AppRoutes() {
       <Route path="/reset-password" element={<Navigate to="/" replace />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/producao/:id" element={<Producao />} />
         <Route path="/produtos" element={<Products />} />
         <Route path="/configuracoes" element={<Configuracoes />} />

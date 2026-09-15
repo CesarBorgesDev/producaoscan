@@ -1,12 +1,13 @@
 import React from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { ScanLine, Package, Settings } from "lucide-react";
+import { ScanLine, Package, Settings, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Image } from "@/components/ui/image";
 
 const LOGO_URL = "https://media.base44.com/images/public/6a9193ac2394a604bc61d87a/a47f78456_dama.PNG";
 
 const nav = [
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/", label: "Produção", icon: ScanLine, end: true },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
@@ -50,7 +51,7 @@ export default function Layout() {
                   }
                 >
                   <item.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{item.label}</span>
+                  <span className="hidden lg:inline">{item.label}</span>
                 </NavLink>
               ))}
             </nav>
