@@ -14,78 +14,51 @@ const nav = [
 
 export default function Layout() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col border-r border-sidebar-border bg-sidebar">
-        <div className="px-6 py-6 flex items-center gap-3 border-b border-sidebar-border">
-          <Image
-            src={LOGO_URL}
-            alt="DAMA Carnes Nobres"
-            fittingType="fit"
-            className="w-28 h-10"
-          />
-        </div>
-        <div className="px-6 -mt-1 pb-3 text-[11px] text-sidebar-foreground/80 border-b border-sidebar-border">
-          Controle de Produção · Padrão Toledo
-        </div>
-        <nav className="flex-1 p-3 space-y-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60"
-                )
-              }
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
+    <div className="min-h-screen bg-slate-50 text-foreground">
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+          <div className="flex h-16 md:h-[4.75rem] items-center justify-between gap-4">
+            <NavLink to="/" className="flex min-w-0 items-center gap-3 md:gap-4">
+              <Image
+                src={LOGO_URL}
+                alt="DAMA Carnes Nobres"
+                fittingType="fit"
+                className="h-10 w-[140px] md:h-12 md:w-[168px] shrink-0 object-contain"
+              />
+              <div className="hidden sm:block h-8 w-px bg-slate-200" />
+              <div className="hidden sm:block min-w-0">
+                <p className="text-sm font-semibold tracking-tight text-slate-900">
+                  Controle de Produção
+                </p>
+                <p className="text-[11px] text-muted-foreground">Padrão Toledo · EAN-13</p>
+              </div>
             </NavLink>
-          ))}
-        </nav>
-        <div className="p-4 border-t border-sidebar-border text-[11px] text-sidebar-foreground/80">
-          Etiquetas pesáveis · EAN-13
-        </div>
-      </aside>
 
-      {/* Mobile top bar */}
-      <header className="md:hidden sticky top-0 z-20 bg-sidebar border-b border-sidebar-border">
-        <div className="px-4 py-3 flex items-center gap-2">
-          <Image
-            src={LOGO_URL}
-            alt="DAMA Carnes Nobres"
-            fittingType="fit"
-            className="w-24 h-8"
-          />
+            <nav className="flex items-center gap-0.5 rounded-full bg-slate-100 p-1">
+              {nav.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-2 rounded-full px-3 py-2 text-xs md:text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-white text-slate-900 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    )
+                  }
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{item.label}</span>
+                </NavLink>
+              ))}
+            </nav>
+          </div>
         </div>
-        <nav className="flex px-2 pb-2 gap-1">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.end}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors",
-                  isActive
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent/60"
-                )
-              }
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
       </header>
 
-      <main className="md:pl-64">
+      <main>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10 py-6 lg:py-10">
           <Outlet />
         </div>

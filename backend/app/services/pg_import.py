@@ -69,7 +69,15 @@ def _pick(row: dict[str, Any], keys: tuple[str, ...]) -> Any:
     return None
 
 
-def _ippt_is_p(row: dict[str, Any]) -> bool:
+def _row_has_ippt(row: dict[str, Any]) -> bool:
+    return any(str(key).lower() == "ippt" for key in row)
+
+
+def _ippt_allows_import(row: dict[str, Any]) -> bool:
+    # CSV/JSON sem a coluna ippt devem ser importados.
+    # Quando o campo existe (PostgreSQL ou arquivo), só entra ippt = P.
+    if not _row_has_ippt(row):
+        return True
     value = _pick(row, IPPT_KEYS)
     if value is None:
         return False
@@ -98,7 +106,7 @@ def _normalize_row(row: dict[str, Any]) -> dict | None:
 def upsert_products(db: Session, rows: list[dict], source: str, filename: str) -> dict:
     imported = updated = skipped = 0
     for raw in rows:
-        if not _ippt_is_p(raw):
+        if not _ippt_allows_import(raw):
             skipped += 1
             continue
         data = _normalize_row(raw)
