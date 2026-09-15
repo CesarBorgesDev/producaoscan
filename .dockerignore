@@ -1,0 +1,13 @@
+.git
+.cursor
+node_modules
+dist
+.vite
+backend
+flutter_app
+deploy
+**/.env
+**/.env.*
+*.log
+.idea
+.vscode

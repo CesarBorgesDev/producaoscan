@@ -15,12 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
 
   useEffect(() => {
-    // App opera sem login: não consulta auth remota nem bloqueia a UI.
-    setIsLoadingPublicSettings(false);
-    setIsLoadingAuth(false);
-    setIsAuthenticated(true);
-    setAuthChecked(true);
-    setUser({ email: "operador@local", full_name: "Operador" });
+    checkAppState();
   }, []);
 
   const checkAppState = async () => {
