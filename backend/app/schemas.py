@@ -57,6 +57,11 @@ class ScanIn(BaseModel):
     barcode: str
 
 
+class ManualItemIn(BaseModel):
+    product_code: str
+    weight_kg: float = Field(gt=0, le=9999)
+
+
 class SettingsIn(BaseModel):
     pg_host: str
     pg_port: int = 5432

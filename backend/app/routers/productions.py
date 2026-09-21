@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import Product, Production, ProductionItem
+from ..models import Production, ProductionItem
 from ..schemas import (
     DashboardDay,
     DashboardOut,
@@ -17,10 +17,12 @@ from ..schemas import (
     ProductionIn,
     ProductionItemOut,
     ProductionOut,
+    ManualItemIn,
     ScanIn,
 )
 from ..services.pdf import build_production_pdf
 from ..services.pg_export import export_production
+from ..services.product_lookup import find_product_by_code, manual_barcode, normalize_weight_kg
 from ..toledo import parse_toledo_barcode
 
 router = APIRouter(prefix="/api/productions", tags=["productions"])
@@ -62,6 +64,24 @@ def _ensure_open(production: Production) -> None:
 def _ensure_not_exported(production: Production) -> None:
     if _is_exported(production):
         raise HTTPException(409, "Produção enviada ao Uniplus — alteração e exclusão bloqueadas.")
+
+
+def _add_production_item(db: Session, production: Production, product, weight_kg: float, barcode: str):
+    unit_price = product.unit_price or 0
+    item = ProductionItem(
+        barcode=barcode,
+        product_code=product.code,
+        product_name=product.name,
+        weight_kg=weight_kg,
+        unit_price=unit_price,
+        total_price=round(weight_kg * unit_price, 2),
+        production_id=production.id,
+    )
+    db.add(item)
+    db.flush()
+    _recalc(db, production)
+    db.refresh(item)
+    return item
 
 
 def _active(query):
@@ -352,33 +372,23 @@ def scan_item(production_id: str, payload: ScanIn, db: Session = Depends(get_db)
             "Etiqueta inválida. Use o padrão 2CCCC0TTTTTT (C=código, T=quantidade em kg).",
         )
 
-    product = db.query(Product).filter(Product.code == parsed["product_code"]).one_or_none()
-    if not product:
-        product = (
-            db.query(Product)
-            .filter(Product.code == parsed["product_code_padded"])
-            .one_or_none()
-        )
-    if not product:
-        raise HTTPException(404, f"Produto {parsed['product_code']} não cadastrado.")
+    product = find_product_by_code(db, parsed["product_code"])
+    return _add_production_item(db, production, product, parsed["weight_kg"], parsed["raw"])
 
-    weight_kg = parsed["weight_kg"]
-    unit_price = product.unit_price or 0
-    total = round(weight_kg * unit_price, 2)
-    item = ProductionItem(
-        barcode=parsed["raw"],
-        product_code=product.code,
-        product_name=product.name,
-        weight_kg=weight_kg,
-        unit_price=unit_price,
-        total_price=total,
-        production_id=production.id,
+
+@router.post("/{production_id}/manual", response_model=ProductionItemOut)
+def add_manual_item(production_id: str, payload: ManualItemIn, db: Session = Depends(get_db)):
+    production = _get_production(db, production_id)
+    _ensure_open(production)
+    product = find_product_by_code(db, payload.product_code)
+    weight_kg = normalize_weight_kg(payload.weight_kg)
+    return _add_production_item(
+        db,
+        production,
+        product,
+        weight_kg,
+        manual_barcode(product.code, weight_kg),
     )
-    db.add(item)
-    db.flush()
-    _recalc(db, production)
-    db.refresh(item)
-    return item
 
 
 @router.delete("/{production_id}/items/{item_id}", status_code=204)

@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { formatBRL, formatWeight } from "@/lib/toledo";
 import { api, isExported, isDeleted, isOpen, statusLabel } from "@/lib/apiClient";
+import CollectEntryCard from "@/components/CollectEntryCard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Trash2,
-  ScanLine,
   ArrowLeft,
   Save,
   CheckCircle2,
@@ -31,10 +30,8 @@ export default function Producao() {
   const [production, setProduction] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [barcode, setBarcode] = useState("");
   const [processing, setProcessing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -54,10 +51,6 @@ export default function Producao() {
     loadAll();
   }, [loadAll]);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [loading]);
-
   const exported = isExported(production);
   const deleted = isDeleted(production);
   const readOnly = !production || !isOpen(production) || exported;
@@ -71,18 +64,13 @@ export default function Producao() {
     { weight: 0, price: 0 }
   );
 
-  const focusInput = () => setTimeout(() => inputRef.current?.focus(), 0);
-
   const refreshProduction = async () => {
     const updated = await api.getProduction(id);
     setProduction(updated);
   };
 
-  const handleScan = async (e) => {
-    e.preventDefault();
-    if (readOnly) return;
-    const code = barcode.trim();
-    if (!code) return;
+  const handleScan = async (code) => {
+    if (readOnly) return false;
     setProcessing(true);
     try {
       const created = await api.scan(id, code);
@@ -92,12 +80,32 @@ export default function Producao() {
         title: "Produto adicionado",
         description: `${created.product_name} · ${formatWeight(created.weight_kg)} · ${formatBRL(created.total_price)}`,
       });
+      return true;
     } catch (err) {
       toast({ title: "Erro ao registrar", description: err.message, variant: "destructive" });
+      return false;
     } finally {
-      setBarcode("");
       setProcessing(false);
-      focusInput();
+    }
+  };
+
+  const handleManual = async (payload) => {
+    if (readOnly) return false;
+    setProcessing(true);
+    try {
+      const created = await api.addProductionItem(id, payload);
+      setItems((prev) => [created, ...prev]);
+      await refreshProduction();
+      toast({
+        title: "Produto adicionado",
+        description: `${created.product_name} · ${formatWeight(created.weight_kg)} · ${formatBRL(created.total_price)}`,
+      });
+      return true;
+    } catch (err) {
+      toast({ title: "Erro ao registrar", description: err.message, variant: "destructive" });
+      return false;
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -255,36 +263,15 @@ export default function Producao() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <Card className={readOnly ? "opacity-60" : "border-2 border-primary/10 shadow-sm"}>
-            <CardContent className="p-6">
-              <form onSubmit={handleScan} className="space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <ScanLine className="w-5 h-5" />
-                  <span className="text-sm font-medium">Coleta de etiquetas</span>
-                </div>
-                <Input
-                  ref={inputRef}
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder={readOnly ? statusLabel(production?.status) : "Posicione o leitor ou digite…"}
-                  className="h-14 text-lg font-mono tracking-widest"
-                  autoComplete="off"
-                  disabled={readOnly || processing}
-                />
-                <Button
-                  type="submit"
-                  className="w-full h-11 gap-2"
-                  disabled={readOnly || processing || !barcode.trim()}
-                >
-                  <ScanLine className="w-4 h-4" />
-                  {processing ? "Processando…" : "Adicionar à produção"}
-                </Button>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Formato: 2CCCC0TTTTTT — C = código (4 dígitos), T = quantidade em kg (6 dígitos, 3 casas).
-                </p>
-              </form>
-            </CardContent>
-          </Card>
+          <CollectEntryCard
+            readOnly={readOnly}
+            statusText={statusLabel(production?.status)}
+            processing={processing}
+            submitScanLabel="Adicionar à produção"
+            submitManualLabel="Adicionar à produção"
+            onScan={handleScan}
+            onManual={handleManual}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <Card className="shadow-sm">
@@ -368,7 +355,7 @@ export default function Producao() {
                   </div>
                   <p className="text-sm font-medium">Nenhum item coletado</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Escaneie a primeira etiqueta para iniciar a coleta.
+                    Escaneie a etiqueta ou digite o código e o peso para iniciar a coleta.
                   </p>
                 </div>
               ) : (

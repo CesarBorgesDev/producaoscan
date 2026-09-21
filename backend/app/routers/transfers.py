@@ -4,9 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import Product, TransferItem, TransferRequest
+from ..models import TransferItem, TransferRequest
 from ..schemas import (
     FilialOut,
+    ManualItemIn,
     ScanIn,
     TransferExportResult,
     TransferIn,
@@ -16,6 +17,7 @@ from ..schemas import (
 from ..services.pg_filiais import get_filial, list_filiais
 from ..services.pg_import import get_or_create_settings
 from ..services.pg_transfer_export import export_transfer
+from ..services.product_lookup import find_product_by_code, manual_barcode, normalize_weight_kg
 from ..toledo import parse_toledo_barcode
 
 router = APIRouter(prefix="/api/transfers", tags=["transfers"])
@@ -58,6 +60,24 @@ def _ensure_open(transfer: TransferRequest) -> None:
 def _ensure_not_exported(transfer: TransferRequest) -> None:
     if _is_exported(transfer):
         raise HTTPException(409, "Requisição enviada ao Uniplus — alteração e exclusão bloqueadas.")
+
+
+def _add_transfer_item(db: Session, transfer: TransferRequest, product, weight_kg: float, barcode: str):
+    unit_price = product.unit_price or 0
+    item = TransferItem(
+        barcode=barcode,
+        product_code=product.code,
+        product_name=product.name,
+        weight_kg=weight_kg,
+        unit_price=unit_price,
+        total_price=round(weight_kg * unit_price, 2),
+        transfer_id=transfer.id,
+    )
+    db.add(item)
+    db.flush()
+    _recalc(db, transfer)
+    db.refresh(item)
+    return item
 
 
 @router.get("/filiais", response_model=list[FilialOut])
@@ -179,33 +199,23 @@ def scan_item(transfer_id: str, payload: ScanIn, db: Session = Depends(get_db)):
             "Etiqueta inválida. Use o padrão 2CCCC0TTTTTT (C=código, T=quantidade em kg).",
         )
 
-    product = db.query(Product).filter(Product.code == parsed["product_code"]).one_or_none()
-    if not product:
-        product = (
-            db.query(Product)
-            .filter(Product.code == parsed["product_code_padded"])
-            .one_or_none()
-        )
-    if not product:
-        raise HTTPException(404, f"Produto {parsed['product_code']} não cadastrado.")
+    product = find_product_by_code(db, parsed["product_code"])
+    return _add_transfer_item(db, transfer, product, parsed["weight_kg"], parsed["raw"])
 
-    weight_kg = parsed["weight_kg"]
-    unit_price = product.unit_price or 0
-    total = round(weight_kg * unit_price, 2)
-    item = TransferItem(
-        barcode=parsed["raw"],
-        product_code=product.code,
-        product_name=product.name,
-        weight_kg=weight_kg,
-        unit_price=unit_price,
-        total_price=total,
-        transfer_id=transfer.id,
+
+@router.post("/{transfer_id}/manual", response_model=TransferItemOut)
+def add_manual_item(transfer_id: str, payload: ManualItemIn, db: Session = Depends(get_db)):
+    transfer = _get_transfer(db, transfer_id)
+    _ensure_open(transfer)
+    product = find_product_by_code(db, payload.product_code)
+    weight_kg = normalize_weight_kg(payload.weight_kg)
+    return _add_transfer_item(
+        db,
+        transfer,
+        product,
+        weight_kg,
+        manual_barcode(product.code, weight_kg),
     )
-    db.add(item)
-    db.flush()
-    _recalc(db, transfer)
-    db.refresh(item)
-    return item
 
 
 @router.delete("/{transfer_id}/items/{item_id}", status_code=204)

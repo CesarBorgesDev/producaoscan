@@ -98,6 +98,8 @@ export const api = {
   listItems: (id) => request(`/api/productions/${id}/items`),
   scan: (id, barcode) =>
     request(`/api/productions/${id}/scan`, { method: "POST", body: { barcode } }),
+  addProductionItem: (id, payload) =>
+    request(`/api/productions/${id}/manual`, { method: "POST", body: payload }),
   deleteItem: (productionId, itemId) =>
     request(`/api/productions/${productionId}/items/${itemId}`, { method: "DELETE" }),
   exportProduction: (id) => request(`/api/productions/${id}/export`, { method: "POST" }),
@@ -112,6 +114,8 @@ export const api = {
   listTransferItems: (id) => request(`/api/transfers/${id}/items`),
   scanTransfer: (id, barcode) =>
     request(`/api/transfers/${id}/scan`, { method: "POST", body: { barcode } }),
+  addTransferItem: (id, payload) =>
+    request(`/api/transfers/${id}/manual`, { method: "POST", body: payload }),
   deleteTransferItem: (transferId, itemId) =>
     request(`/api/transfers/${transferId}/items/${itemId}`, { method: "DELETE" }),
   exportTransfer: (id) => request(`/api/transfers/${id}/export`, { method: "POST" }),

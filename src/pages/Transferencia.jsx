@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { formatBRL, formatWeight } from "@/lib/toledo";
 import { api, isDeleted, isExported, isOpen, statusLabel } from "@/lib/apiClient";
+import CollectEntryCard from "@/components/CollectEntryCard";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -18,7 +18,6 @@ import {
   PackageSearch,
   Receipt,
   Save,
-  ScanLine,
   Trash2,
   Weight,
 } from "lucide-react";
@@ -30,10 +29,8 @@ export default function Transferencia() {
   const [transfer, setTransfer] = useState(null);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [barcode, setBarcode] = useState("");
   const [processing, setProcessing] = useState(false);
   const [busy, setBusy] = useState(false);
-  const inputRef = useRef(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -60,10 +57,6 @@ export default function Transferencia() {
     loadAll();
   }, [loadAll]);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [loading]);
-
   const deleted = isDeleted(transfer);
   const exported = isExported(transfer);
   const readOnly = !transfer || !isOpen(transfer) || exported;
@@ -77,17 +70,12 @@ export default function Transferencia() {
     { weight: 0, price: 0 }
   );
 
-  const focusInput = () => setTimeout(() => inputRef.current?.focus(), 0);
-
   const refreshTransfer = async () => {
     setTransfer(await api.getTransfer(id));
   };
 
-  const handleScan = async (e) => {
-    e.preventDefault();
-    if (readOnly) return;
-    const code = barcode.trim();
-    if (!code) return;
+  const handleScan = async (code) => {
+    if (readOnly) return false;
     setProcessing(true);
     try {
       const created = await api.scanTransfer(id, code);
@@ -97,12 +85,32 @@ export default function Transferencia() {
         title: "Produto adicionado",
         description: `${created.product_name} · ${formatWeight(created.weight_kg)} · ${formatBRL(created.total_price)}`,
       });
+      return true;
     } catch (err) {
       toast({ title: "Erro ao registrar", description: err.message, variant: "destructive" });
+      return false;
     } finally {
-      setBarcode("");
       setProcessing(false);
-      focusInput();
+    }
+  };
+
+  const handleManual = async (payload) => {
+    if (readOnly) return false;
+    setProcessing(true);
+    try {
+      const created = await api.addTransferItem(id, payload);
+      setItems((prev) => [created, ...prev]);
+      await refreshTransfer();
+      toast({
+        title: "Produto adicionado",
+        description: `${created.product_name} · ${formatWeight(created.weight_kg)} · ${formatBRL(created.total_price)}`,
+      });
+      return true;
+    } catch (err) {
+      toast({ title: "Erro ao registrar", description: err.message, variant: "destructive" });
+      return false;
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -258,36 +266,15 @@ export default function Transferencia() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <div className="space-y-4 lg:col-span-2">
-          <Card className={readOnly ? "opacity-60" : "border-2 border-primary/10 shadow-sm"}>
-            <CardContent className="p-6">
-              <form onSubmit={handleScan} className="space-y-4">
-                <div className="flex items-center gap-2 text-primary">
-                  <ScanLine className="h-5 w-5" />
-                  <span className="text-sm font-medium">Coleta de etiquetas</span>
-                </div>
-                <Input
-                  ref={inputRef}
-                  value={barcode}
-                  onChange={(e) => setBarcode(e.target.value)}
-                  placeholder={readOnly ? statusLabel(transfer?.status) : "Posicione o leitor ou digite…"}
-                  className="h-14 font-mono text-lg tracking-widest"
-                  autoComplete="off"
-                  disabled={readOnly || processing}
-                />
-                <Button
-                  type="submit"
-                  className="h-11 w-full gap-2"
-                  disabled={readOnly || processing || !barcode.trim()}
-                >
-                  <ScanLine className="h-4 w-4" />
-                  {processing ? "Processando…" : "Adicionar à transferência"}
-                </Button>
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  Formato: 2CCCC0TTTTTT — C = código (4 dígitos), T = quantidade em kg (6 dígitos, 3 casas).
-                </p>
-              </form>
-            </CardContent>
-          </Card>
+          <CollectEntryCard
+            readOnly={readOnly}
+            statusText={statusLabel(transfer?.status)}
+            processing={processing}
+            submitScanLabel="Adicionar à transferência"
+            submitManualLabel="Adicionar à transferência"
+            onScan={handleScan}
+            onManual={handleManual}
+          />
 
           <div className="grid grid-cols-2 gap-3">
             <Card className="shadow-sm">
@@ -367,7 +354,7 @@ export default function Transferencia() {
                   </div>
                   <p className="text-sm font-medium">Nenhum item coletado</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Escaneie a primeira etiqueta para montar a transferência para{" "}
+                    Escaneie a etiqueta ou digite o código e o peso para montar a transferência para{" "}
                     {transfer?.filial_name || "a filial"}.
                   </p>
                 </div>

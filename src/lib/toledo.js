@@ -34,3 +34,14 @@ export function formatWeight(kg) {
   const n = Number(kg || 0);
   return `${n.toFixed(3).replace(".", ",")} kg`;
 }
+
+export function parseWeightKg(raw) {
+  const value = String(raw ?? "")
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(",", ".");
+  if (!value) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 1000) / 1000;
+}
