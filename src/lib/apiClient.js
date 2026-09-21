@@ -102,6 +102,20 @@ export const api = {
     request(`/api/productions/${productionId}/items/${itemId}`, { method: "DELETE" }),
   exportProduction: (id) => request(`/api/productions/${id}/export`, { method: "POST" }),
 
+  listFiliais: () => request("/api/transfers/filiais"),
+  listTransfers: (includeDeleted = false) =>
+    request(`/api/transfers${includeDeleted ? "?include_deleted=true" : ""}`),
+  createTransfer: (payload) => request("/api/transfers", { method: "POST", body: payload }),
+  getTransfer: (id) => request(`/api/transfers/${id}`),
+  updateTransfer: (id, payload) => request(`/api/transfers/${id}`, { method: "PUT", body: payload }),
+  deleteTransfer: (id) => request(`/api/transfers/${id}/delete`, { method: "POST" }),
+  listTransferItems: (id) => request(`/api/transfers/${id}/items`),
+  scanTransfer: (id, barcode) =>
+    request(`/api/transfers/${id}/scan`, { method: "POST", body: { barcode } }),
+  deleteTransferItem: (transferId, itemId) =>
+    request(`/api/transfers/${transferId}/items/${itemId}`, { method: "DELETE" }),
+  exportTransfer: (id) => request(`/api/transfers/${id}/export`, { method: "POST" }),
+
   async downloadProductionPdf(id, label = "producao") {
     const res = await fetch(`${API_BASE}/api/productions/${id}/pdf`);
     if (!res.ok) throw new ApiError(await readError(res));

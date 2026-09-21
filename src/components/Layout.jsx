@@ -1,14 +1,16 @@
 import React from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { ScanLine, Package, Settings, LayoutDashboard } from "lucide-react";
+import { ScanLine, Package, Settings, LayoutDashboard, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Image } from "@/components/ui/image";
+import InstallAppButton from "@/components/InstallAppButton";
 
 const LOGO_URL = "https://media.base44.com/images/public/6a9193ac2394a604bc61d87a/a47f78456_dama.PNG";
 
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/", label: "Produção", icon: ScanLine, end: true },
+  { to: "/transferencias", label: "Transferências", icon: ArrowLeftRight },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];
@@ -56,6 +58,7 @@ export default function Layout() {
             </nav>
           </div>
         </div>
+        <InstallAppButton />
       </header>
 
       <main>

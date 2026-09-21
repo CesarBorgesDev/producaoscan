@@ -11,6 +11,7 @@ import {
   isOpen,
   statusLabel,
 } from "@/lib/apiClient";
+import TransferStartDialog from "@/components/TransferStartDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +20,7 @@ import {
   Plus,
   Play,
   ArrowRight,
+  ArrowLeftRight,
   ClipboardList,
   Weight,
   Receipt,
@@ -38,6 +40,7 @@ export default function Home() {
   const [productions, setProductions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [tab, setTab] = useState("active");
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -98,19 +101,25 @@ export default function Home() {
             Inicie a produção do dia, colete as etiquetas e conclua quando finalizar.
           </p>
         </div>
-        <Button onClick={handleStart} disabled={creating} className="gap-2">
-          {openProduction ? (
-            <>
-              <Play className="w-4 h-4" />
-              Continuar produção
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" />
-              {creating ? "Iniciando…" : "Iniciar produção do dia"}
-            </>
-          )}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleStart} disabled={creating} className="gap-2">
+            {openProduction ? (
+              <>
+                <Play className="w-4 h-4" />
+                Continuar produção
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                {creating ? "Iniciando…" : "Iniciar produção do dia"}
+              </>
+            )}
+          </Button>
+          <Button variant="outline" onClick={() => setTransferOpen(true)} className="gap-2">
+            <ArrowLeftRight className="w-4 h-4" />
+            Requisição de transferência
+          </Button>
+        </div>
       </div>
 
       {openProduction && tab === "active" && (
@@ -265,6 +274,12 @@ export default function Home() {
           })}
         </div>
       )}
+
+      <TransferStartDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        onCreated={(created) => navigate(`/transferencia/${created.id}`)}
+      />
     </div>
   );
 }

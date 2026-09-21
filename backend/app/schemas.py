@@ -106,6 +106,15 @@ class ExportResult(BaseModel):
     unmatched: list[str] = Field(default_factory=list)
 
 
+class TransferExportResult(BaseModel):
+    ok: bool
+    requisicaotransferencia_id: int
+    codigo: str
+    items: int
+    message: str
+    unmatched: list[str] = Field(default_factory=list)
+
+
 class DashboardTotals(BaseModel):
     productions: int = 0
     items: int = 0
@@ -153,3 +162,49 @@ class DashboardOut(BaseModel):
     by_status: list[DashboardStatus] = Field(default_factory=list)
     top_products: list[DashboardTopProduct] = Field(default_factory=list)
     recent: list[ProductionOut] = Field(default_factory=list)
+
+
+class FilialOut(BaseModel):
+    id: int
+    code: str | None = None
+    name: str
+
+
+class TransferIn(BaseModel):
+    filial_id: int
+    label: str | None = None
+    status: str = "em_andamento"
+    request_date: date | None = None
+
+
+class TransferOut(BaseModel):
+    id: str
+    label: str
+    status: str
+    filial_id: int
+    filial_code: str | None = None
+    filial_name: str
+    request_date: date
+    item_count: int
+    total_weight: float
+    total_price: float
+    created_at: datetime
+    deleted_at: datetime | None = None
+    exported_at: datetime | None = None
+    exported_pg_id: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class TransferItemOut(BaseModel):
+    id: str
+    barcode: str
+    product_code: str
+    product_name: str
+    weight_kg: float
+    unit_price: float
+    total_price: float
+    transfer_id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

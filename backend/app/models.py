@@ -58,6 +58,45 @@ class ProductionItem(Base):
     production: Mapped[Production] = relationship(back_populates="items")
 
 
+class TransferRequest(Base):
+    __tablename__ = "transfer_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    label: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), default="em_andamento")
+    filial_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    filial_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    filial_name: Mapped[str] = mapped_column(String(255))
+    request_date: Mapped[date] = mapped_column(Date, default=date.today)
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_weight: Mapped[float] = mapped_column(Float, default=0)
+    total_price: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    exported_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    exported_pg_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
+    items: Mapped[list["TransferItem"]] = relationship(
+        back_populates="transfer", cascade="all, delete-orphan"
+    )
+
+
+class TransferItem(Base):
+    __tablename__ = "transfer_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    barcode: Mapped[str] = mapped_column(String(32))
+    product_code: Mapped[str] = mapped_column(String(20))
+    product_name: Mapped[str] = mapped_column(String(255))
+    weight_kg: Mapped[float] = mapped_column(Float)
+    unit_price: Mapped[float] = mapped_column(Float)
+    total_price: Mapped[float] = mapped_column(Float)
+    transfer_id: Mapped[str] = mapped_column(String(36), ForeignKey("transfer_requests.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    transfer: Mapped[TransferRequest] = relationship(back_populates="items")
+
+
 class AppSettings(Base):
     __tablename__ = "app_settings"
 

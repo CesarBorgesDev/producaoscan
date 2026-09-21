@@ -9,6 +9,8 @@ import Layout from '@/components/Layout';
 import Dashboard from '@/pages/Dashboard';
 import Home from '@/pages/Home';
 import Producao from '@/pages/Producao';
+import Transferencias from '@/pages/Transferencias';
+import Transferencia from '@/pages/Transferencia';
 import Products from '@/pages/Products';
 import Configuracoes from '@/pages/Configuracoes';
 
@@ -23,6 +25,8 @@ function AppRoutes() {
         <Route path="/" element={<Home />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/producao/:id" element={<Producao />} />
+        <Route path="/transferencias" element={<Transferencias />} />
+        <Route path="/transferencia/:id" element={<Transferencia />} />
         <Route path="/produtos" element={<Products />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
       </Route>
