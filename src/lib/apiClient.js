@@ -120,6 +120,20 @@ export const api = {
     request(`/api/transfers/${transferId}/items/${itemId}`, { method: "DELETE" }),
   exportTransfer: (id) => request(`/api/transfers/${id}/export`, { method: "POST" }),
 
+  listLosses: (includeDeleted = false) =>
+    request(`/api/losses${includeDeleted ? "?include_deleted=true" : ""}`),
+  createLoss: (payload) => request("/api/losses", { method: "POST", body: payload }),
+  getLoss: (id) => request(`/api/losses/${id}`),
+  updateLoss: (id, payload) => request(`/api/losses/${id}`, { method: "PUT", body: payload }),
+  deleteLoss: (id) => request(`/api/losses/${id}/delete`, { method: "POST" }),
+  listLossItems: (id) => request(`/api/losses/${id}/items`),
+  scanLoss: (id, barcode) =>
+    request(`/api/losses/${id}/scan`, { method: "POST", body: { barcode } }),
+  addLossItem: (id, payload) =>
+    request(`/api/losses/${id}/manual`, { method: "POST", body: payload }),
+  deleteLossItem: (lossId, itemId) =>
+    request(`/api/losses/${lossId}/items/${itemId}`, { method: "DELETE" }),
+
   async downloadProductionPdf(id, label = "producao") {
     const res = await fetch(`${API_BASE}/api/productions/${id}/pdf`);
     if (!res.ok) throw new ApiError(await readError(res));

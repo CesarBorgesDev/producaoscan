@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'api_client.dart';
 import 'screens/home_screen.dart';
+import 'screens/loss_list_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/transfer_list_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,7 +44,7 @@ class ProducaoScanApp extends StatelessWidget {
           backgroundColor: Colors.white,
           indicatorColor: Color(0xFFD6E4F7),
         ),
-        cardTheme: const CardTheme(
+        cardTheme: const CardThemeData(
           color: Colors.white,
           surfaceTintColor: Colors.transparent,
         ),
@@ -116,6 +118,8 @@ class _ShellState extends State<Shell> {
   Widget build(BuildContext context) {
     final pages = [
       const HomeScreen(),
+      const TransferListScreen(),
+      const LossListScreen(),
       ProductsScreen(key: ValueKey(_productsTick)),
       const SettingsScreen(),
     ];
@@ -129,13 +133,15 @@ class _ShellState extends State<Shell> {
         onDestinationSelected: (value) {
           setState(() {
             _index = value;
-            if (value == 1) _productsTick++;
+            if (value == 3) _productsTick++;
           });
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Produção'),
+          NavigationDestination(icon: Icon(Icons.swap_horiz), label: 'Transf.'),
+          NavigationDestination(icon: Icon(Icons.trending_down), label: 'Perdas'),
           NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Produtos'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Configurações'),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Config.'),
         ],
       ),
     );

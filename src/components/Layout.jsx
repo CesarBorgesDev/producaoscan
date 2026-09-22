@@ -1,6 +1,6 @@
 import React from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { ScanLine, Package, Settings, LayoutDashboard, ArrowLeftRight } from "lucide-react";
+import { ScanLine, Package, Settings, LayoutDashboard, ArrowLeftRight, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Image } from "@/components/ui/image";
 import InstallAppButton from "@/components/InstallAppButton";
@@ -11,6 +11,7 @@ const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/", label: "Produção", icon: ScanLine, end: true },
   { to: "/transferencias", label: "Transferências", icon: ArrowLeftRight },
+  { to: "/perdas", label: "Perdas", icon: TrendingDown },
   { to: "/produtos", label: "Produtos", icon: Package },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ];

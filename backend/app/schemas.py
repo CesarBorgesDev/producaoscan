@@ -213,3 +213,37 @@ class TransferItemOut(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class LossIn(BaseModel):
+    label: str | None = None
+    status: str = "em_andamento"
+    loss_date: date | None = None
+
+
+class LossOut(BaseModel):
+    id: str
+    label: str
+    status: str
+    loss_date: date
+    item_count: int
+    total_weight: float
+    total_price: float
+    created_at: datetime
+    deleted_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
+class LossItemOut(BaseModel):
+    id: str
+    barcode: str
+    product_code: str
+    product_name: str
+    weight_kg: float
+    unit_price: float
+    total_price: float
+    loss_id: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}

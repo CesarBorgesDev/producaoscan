@@ -138,6 +138,14 @@ class ApiClient {
     return ProductionItem.fromJson(data as Map<String, dynamic>);
   }
 
+  Future<ProductionItem> addProductionItem(String productionId, String productCode, double weightKg) async {
+    final data = await _send('POST', '/api/productions/$productionId/manual', {
+      'product_code': productCode,
+      'weight_kg': weightKg,
+    });
+    return ProductionItem.fromJson(data as Map<String, dynamic>);
+  }
+
   Future<void> deleteItem(String productionId, String itemId) =>
       _send('DELETE', '/api/productions/$productionId/items/$itemId');
 
@@ -156,6 +164,114 @@ class ApiClient {
     final data = await _send('POST', '/api/productions/$id/export');
     return ExportResult.fromJson(data as Map<String, dynamic>);
   }
+
+  Future<List<Filial>> listFiliais() async {
+    final data = await _get('/api/transfers/filiais');
+    return (data as List).map((e) => Filial.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<List<TransferRequest>> listTransfers({bool includeDeleted = false}) async {
+    final data = await _get(
+      '/api/transfers',
+      includeDeleted ? {'include_deleted': 'true'} : null,
+    );
+    return (data as List).map((e) => TransferRequest.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<TransferRequest> createTransfer(Map<String, dynamic> payload) async {
+    final data = await _send('POST', '/api/transfers', payload);
+    return TransferRequest.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<TransferRequest> getTransfer(String id) async {
+    final data = await _get('/api/transfers/$id');
+    return TransferRequest.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<TransferRequest> updateTransfer(String id, Map<String, dynamic> payload) async {
+    final data = await _send('PUT', '/api/transfers/$id', payload);
+    return TransferRequest.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<TransferRequest> deleteTransfer(String id) async {
+    final data = await _send('POST', '/api/transfers/$id/delete');
+    return TransferRequest.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<ProductionItem>> listTransferItems(String id) async {
+    final data = await _get('/api/transfers/$id/items');
+    return (data as List).map((e) => ProductionItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<ProductionItem> scanTransfer(String id, String barcode) async {
+    final data = await _send('POST', '/api/transfers/$id/scan', {'barcode': barcode});
+    return ProductionItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ProductionItem> addTransferItem(String id, String productCode, double weightKg) async {
+    final data = await _send('POST', '/api/transfers/$id/manual', {
+      'product_code': productCode,
+      'weight_kg': weightKg,
+    });
+    return ProductionItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteTransferItem(String transferId, String itemId) =>
+      _send('DELETE', '/api/transfers/$transferId/items/$itemId');
+
+  Future<ExportResult> exportTransfer(String id) async {
+    final data = await _send('POST', '/api/transfers/$id/export');
+    return ExportResult.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<Loss>> listLosses({bool includeDeleted = false}) async {
+    final data = await _get(
+      '/api/losses',
+      includeDeleted ? {'include_deleted': 'true'} : null,
+    );
+    return (data as List).map((e) => Loss.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<Loss> createLoss(Map<String, dynamic> payload) async {
+    final data = await _send('POST', '/api/losses', payload);
+    return Loss.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Loss> getLoss(String id) async {
+    final data = await _get('/api/losses/$id');
+    return Loss.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Loss> updateLoss(String id, Map<String, dynamic> payload) async {
+    final data = await _send('PUT', '/api/losses/$id', payload);
+    return Loss.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<Loss> deleteLoss(String id) async {
+    final data = await _send('POST', '/api/losses/$id/delete');
+    return Loss.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<List<ProductionItem>> listLossItems(String id) async {
+    final data = await _get('/api/losses/$id/items');
+    return (data as List).map((e) => ProductionItem.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<ProductionItem> scanLoss(String id, String barcode) async {
+    final data = await _send('POST', '/api/losses/$id/scan', {'barcode': barcode});
+    return ProductionItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<ProductionItem> addLossItem(String id, String productCode, double weightKg) async {
+    final data = await _send('POST', '/api/losses/$id/manual', {
+      'product_code': productCode,
+      'weight_kg': weightKg,
+    });
+    return ProductionItem.fromJson(data as Map<String, dynamic>);
+  }
+
+  Future<void> deleteLossItem(String lossId, String itemId) =>
+      _send('DELETE', '/api/losses/$lossId/items/$itemId');
 
   Future<PgSettings> getSettings() async {
     final data = await _get('/api/settings');

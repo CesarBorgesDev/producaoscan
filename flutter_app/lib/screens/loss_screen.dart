@@ -1,31 +1,27 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
 
 import '../api_client.dart';
 import '../format.dart';
 import '../models.dart';
 import 'collect_entry_card.dart';
 
-class ProductionScreen extends StatefulWidget {
-  const ProductionScreen({super.key, required this.productionId});
+class LossScreen extends StatefulWidget {
+  const LossScreen({super.key, required this.lossId});
 
-  final String productionId;
+  final String lossId;
 
   @override
-  State<ProductionScreen> createState() => _ProductionScreenState();
+  State<LossScreen> createState() => _LossScreenState();
 }
 
-class _ProductionScreenState extends State<ProductionScreen> {
-  Production? _production;
+class _LossScreenState extends State<LossScreen> {
+  Loss? _loss;
   List<ProductionItem> _items = [];
   bool _loading = true;
   bool _processing = false;
   bool _busy = false;
 
-  bool get _readOnly =>
-      _production == null || !_production!.isOpen || _production!.isExported;
+  bool get _readOnly => _loss == null || !_loss!.isOpen;
 
   @override
   void initState() {
@@ -37,12 +33,12 @@ class _ProductionScreenState extends State<ProductionScreen> {
     setState(() => _loading = true);
     try {
       final results = await Future.wait([
-        ApiClient.instance.getProduction(widget.productionId),
-        ApiClient.instance.listItems(widget.productionId),
+        ApiClient.instance.getLoss(widget.lossId),
+        ApiClient.instance.listLossItems(widget.lossId),
       ]);
       if (!mounted) return;
       setState(() {
-        _production = results[0] as Production;
+        _loss = results[0] as Loss;
         _items = results[1] as List<ProductionItem>;
       });
     } catch (e) {
@@ -50,9 +46,7 @@ class _ProductionScreenState extends State<ProductionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
       Navigator.of(context).pop();
     } finally {
-      if (mounted) {
-        setState(() => _loading = false);
-      }
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -66,14 +60,14 @@ class _ProductionScreenState extends State<ProductionScreen> {
         ),
       ),
     );
-    await _refreshTotals();
+    await _refresh();
   }
 
   Future<void> _register(String code) async {
     if (code.isEmpty || _readOnly) return;
     setState(() => _processing = true);
     try {
-      await _added(await ApiClient.instance.scan(widget.productionId, code));
+      await _added(await ApiClient.instance.scanLoss(widget.lossId, code));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -86,7 +80,7 @@ class _ProductionScreenState extends State<ProductionScreen> {
     if (_readOnly) return;
     setState(() => _processing = true);
     try {
-      await _added(await ApiClient.instance.addProductionItem(widget.productionId, productCode, weightKg));
+      await _added(await ApiClient.instance.addLossItem(widget.lossId, productCode, weightKg));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -95,16 +89,16 @@ class _ProductionScreenState extends State<ProductionScreen> {
     }
   }
 
-  Future<void> _refreshTotals() async {
-    final production = await ApiClient.instance.getProduction(widget.productionId);
-    if (mounted) setState(() => _production = production);
+  Future<void> _refresh() async {
+    final row = await ApiClient.instance.getLoss(widget.lossId);
+    if (mounted) setState(() => _loss = row);
   }
 
   Future<void> _delete(ProductionItem item) async {
     try {
-      await ApiClient.instance.deleteItem(widget.productionId, item.id);
+      await ApiClient.instance.deleteLossItem(widget.lossId, item.id);
       setState(() => _items = _items.where((e) => e.id != item.id).toList());
-      await _refreshTotals();
+      await _refresh();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
@@ -112,76 +106,31 @@ class _ProductionScreenState extends State<ProductionScreen> {
   }
 
   Future<void> _finish() async {
-    final production = _production;
-    if (production == null) return;
+    final loss = _loss;
+    if (loss == null) return;
     try {
-      final updated = await ApiClient.instance.updateProduction(production.id, {
-        'label': production.label,
+      final updated = await ApiClient.instance.updateLoss(loss.id, {
+        'label': loss.label,
         'status': 'concluida',
-        'production_date': production.productionDate,
+        'loss_date': loss.lossDate,
       });
-      setState(() => _production = updated);
+      setState(() => _loss = updated);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Produção concluída')));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    }
-  }
-
-  Future<void> _generatePdf() async {
-    setState(() => _busy = true);
-    try {
-      final bytes = await ApiClient.instance.getProductionPdf(widget.productionId);
-      await Printing.sharePdf(
-        bytes: Uint8List.fromList(bytes),
-        filename: 'producao-${widget.productionId.substring(0, 8)}.pdf',
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perda concluída. Registro mantido apenas no aplicativo.')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<void> _exportPostgres() async {
+  Future<void> _exclude() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exportar para Sistema Uniplus'),
-        content: const Text(
-          'A produção será gravada no Uniplus e não poderá mais ser alterada nem excluída.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Exportar')),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    setState(() => _busy = true);
-    try {
-      final result = await ApiClient.instance.exportProduction(widget.productionId);
-      await _refreshTotals();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _excludeProduction() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Excluir produção'),
-        content: const Text(
-          'A produção sai da coleta ativa, mas permanece no histórico de produções excluídas.',
-        ),
+        title: const Text('Excluir perda'),
+        content: const Text('A perda sai da coleta ativa, mas permanece no histórico de excluídas.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           FilledButton(
@@ -195,11 +144,8 @@ class _ProductionScreenState extends State<ProductionScreen> {
     if (confirmed != true) return;
     setState(() => _busy = true);
     try {
-      await ApiClient.instance.deleteProduction(widget.productionId);
+      await ApiClient.instance.deleteLoss(widget.lossId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Produção movida para excluídas')),
-      );
       Navigator.of(context).pop();
     } catch (e) {
       if (!mounted) return;
@@ -214,50 +160,47 @@ class _ProductionScreenState extends State<ProductionScreen> {
     if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
-    final production = _production;
+    final loss = _loss;
     final weight = _items.fold<double>(0, (s, it) => s + it.weightKg);
     final price = _items.fold<double>(0, (s, it) => s + it.totalPrice);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(production?.label ?? 'Produção'),
+        title: Text(loss?.label ?? 'Perda'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12, top: 12, bottom: 12),
-            child: Chip(
-              label: Text(production?.statusLabel ?? ''),
-              backgroundColor: production?.isOpen == true ? const Color(0xFFD6E4F7) : null,
-            ),
+            child: Chip(label: Text(loss?.statusLabel ?? '')),
           ),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (production?.isDeleted == true)
+          if (loss?.isDeleted == true)
             Card(
               color: Colors.red.shade50,
               child: const ListTile(
                 leading: Icon(Icons.delete_forever),
-                title: Text('Produção excluída'),
+                title: Text('Perda excluída'),
                 subtitle: Text('Registro mantido no histórico. A coleta está bloqueada.'),
               ),
-            ),
-          if (production?.isExported == true)
+            )
+          else if (_readOnly)
             Card(
-              color: const Color(0xFFE3F2FD),
+              color: Theme.of(context).colorScheme.primaryContainer,
               child: const ListTile(
-                leading: Icon(Icons.cloud_done),
-                title: Text('Enviada ao Uniplus'),
-                subtitle: Text('Esta produção está bloqueada. Não é possível alterar nem excluir.'),
+                leading: Icon(Icons.lock_outline),
+                title: Text('Perda concluída'),
+                subtitle: Text('Este registro não é enviado ao Uniplus.'),
               ),
             ),
           CollectEntryCard(
             readOnly: _readOnly,
             processing: _processing,
-            statusText: production?.statusLabel ?? 'Somente leitura',
-            submitScanLabel: 'Adicionar à produção',
-            submitManualLabel: 'Adicionar à produção',
+            statusText: loss?.statusLabel ?? 'Somente leitura',
+            submitScanLabel: 'Adicionar à perda',
+            submitManualLabel: 'Adicionar à perda',
             onScan: _register,
             onManual: _registerManual,
           ),
@@ -305,40 +248,25 @@ class _ProductionScreenState extends State<ProductionScreen> {
             FilledButton.icon(
               onPressed: _busy ? null : _finish,
               icon: const Icon(Icons.check_circle),
-              label: const Text('Concluir produção'),
+              label: const Text('Concluir perda'),
             ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _busy ? null : _generatePdf,
-            icon: const Icon(Icons.picture_as_pdf),
-            label: const Text('Gerar PDF da produção'),
-          ),
-          if (production?.isExported != true && production?.isDeleted != true) ...[
+          if (loss?.isDeleted != true) ...[
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: _busy ? null : _exportPostgres,
-              icon: const Icon(Icons.cloud_upload),
-              label: const Text('Exportar para Sistema Uniplus'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _excludeProduction,
+              onPressed: _busy ? null : _exclude,
               icon: const Icon(Icons.delete_outline),
               style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
-              label: const Text('Excluir produção'),
+              label: const Text('Excluir perda'),
             ),
           ],
           const SizedBox(height: 20),
-          Text('Itens coletados (${_items.length})', style: Theme.of(context).textTheme.titleSmall),
+          Text('Itens da perda (${_items.length})', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 8),
           if (_items.isEmpty)
             const Card(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Text(
-                  'Nenhum item coletado. Toque em Adicionar à produção para abrir a câmera.',
-                  textAlign: TextAlign.center,
-                ),
+                child: Text('Nenhum item registrado. Use o leitor ou digite código e peso.', textAlign: TextAlign.center),
               ),
             )
           else
@@ -352,10 +280,7 @@ class _ProductionScreenState extends State<ProductionScreen> {
                     children: [
                       Text(formatBRL(it.totalPrice), style: const TextStyle(fontWeight: FontWeight.w600)),
                       if (!_readOnly)
-                        IconButton(
-                          onPressed: () => _delete(it),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
+                        IconButton(onPressed: () => _delete(it), icon: const Icon(Icons.delete_outline)),
                     ],
                   ),
                 ),

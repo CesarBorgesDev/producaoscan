@@ -21,6 +21,7 @@ import {
   Play,
   ArrowRight,
   ArrowLeftRight,
+  TrendingDown,
   ClipboardList,
   Weight,
   Receipt,
@@ -118,6 +119,10 @@ export default function Home() {
           <Button variant="outline" onClick={() => setTransferOpen(true)} className="gap-2">
             <ArrowLeftRight className="w-4 h-4" />
             Requisição de transferência
+          </Button>
+          <Button variant="outline" onClick={() => navigate("/perdas")} className="gap-2">
+            <TrendingDown className="w-4 h-4" />
+            Registrar perda
           </Button>
         </div>
       </div>

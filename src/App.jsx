@@ -11,6 +11,8 @@ import Home from '@/pages/Home';
 import Producao from '@/pages/Producao';
 import Transferencias from '@/pages/Transferencias';
 import Transferencia from '@/pages/Transferencia';
+import Perdas from '@/pages/Perdas';
+import Perda from '@/pages/Perda';
 import Products from '@/pages/Products';
 import Configuracoes from '@/pages/Configuracoes';
 
@@ -27,6 +29,8 @@ function AppRoutes() {
         <Route path="/producao/:id" element={<Producao />} />
         <Route path="/transferencias" element={<Transferencias />} />
         <Route path="/transferencia/:id" element={<Transferencia />} />
+        <Route path="/perdas" element={<Perdas />} />
+        <Route path="/perda/:id" element={<Perda />} />
         <Route path="/produtos" element={<Products />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
       </Route>

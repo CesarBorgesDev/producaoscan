@@ -182,9 +182,134 @@ class ExportResult {
 
   factory ExportResult.fromJson(Map<String, dynamic> json) => ExportResult(
         ok: json['ok'] == true,
-        registroproducaoId: json['registroproducao_id'] as int? ?? 0,
+        registroproducaoId: (json['registroproducao_id'] as num?)?.toInt() ??
+            (json['requisicaotransferencia_id'] as num?)?.toInt() ??
+            0,
         codigo: json['codigo'] as String? ?? '',
         items: json['items'] as int? ?? 0,
         message: json['message'] as String? ?? '',
+      );
+}
+
+class Filial {
+  Filial({required this.id, this.code, required this.name});
+
+  final int id;
+  final String? code;
+  final String name;
+
+  String get label => (code == null || code!.isEmpty) ? name : '$code · $name';
+
+  factory Filial.fromJson(Map<String, dynamic> json) => Filial(
+        id: (json['id'] as num).toInt(),
+        code: json['code'] as String?,
+        name: json['name'] as String,
+      );
+}
+
+class TransferRequest {
+  TransferRequest({
+    required this.id,
+    required this.label,
+    required this.status,
+    required this.filialId,
+    this.filialCode,
+    required this.filialName,
+    required this.requestDate,
+    required this.itemCount,
+    required this.totalWeight,
+    required this.totalPrice,
+    this.exportedPgId,
+  });
+
+  final String id;
+  final String label;
+  final String status;
+  final int filialId;
+  final String? filialCode;
+  final String filialName;
+  final String requestDate;
+  final int itemCount;
+  final double totalWeight;
+  final double totalPrice;
+  final int? exportedPgId;
+
+  bool get isOpen => status == 'em_andamento';
+  bool get isDeleted => status == 'excluida';
+  bool get isExported => exportedPgId != null || status == 'enviada';
+
+  String get statusLabel {
+    switch (status) {
+      case 'em_andamento':
+        return 'Em andamento';
+      case 'concluida':
+        return 'Concluída';
+      case 'excluida':
+        return 'Excluída';
+      case 'enviada':
+        return 'Enviada ao Uniplus';
+      default:
+        return status;
+    }
+  }
+
+  factory TransferRequest.fromJson(Map<String, dynamic> json) => TransferRequest(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        status: json['status'] as String,
+        filialId: (json['filial_id'] as num).toInt(),
+        filialCode: json['filial_code'] as String?,
+        filialName: json['filial_name'] as String,
+        requestDate: json['request_date'] as String,
+        itemCount: json['item_count'] as int,
+        totalWeight: (json['total_weight'] as num).toDouble(),
+        totalPrice: (json['total_price'] as num).toDouble(),
+        exportedPgId: (json['exported_pg_id'] as num?)?.toInt(),
+      );
+}
+
+class Loss {
+  Loss({
+    required this.id,
+    required this.label,
+    required this.status,
+    required this.lossDate,
+    required this.itemCount,
+    required this.totalWeight,
+    required this.totalPrice,
+  });
+
+  final String id;
+  final String label;
+  final String status;
+  final String lossDate;
+  final int itemCount;
+  final double totalWeight;
+  final double totalPrice;
+
+  bool get isOpen => status == 'em_andamento';
+  bool get isDeleted => status == 'excluida';
+
+  String get statusLabel {
+    switch (status) {
+      case 'em_andamento':
+        return 'Em andamento';
+      case 'concluida':
+        return 'Concluída';
+      case 'excluida':
+        return 'Excluída';
+      default:
+        return status;
+    }
+  }
+
+  factory Loss.fromJson(Map<String, dynamic> json) => Loss(
+        id: json['id'] as String,
+        label: json['label'] as String,
+        status: json['status'] as String,
+        lossDate: json['loss_date'] as String,
+        itemCount: json['item_count'] as int,
+        totalWeight: (json['total_weight'] as num).toDouble(),
+        totalPrice: (json['total_price'] as num).toDouble(),
       );
 }

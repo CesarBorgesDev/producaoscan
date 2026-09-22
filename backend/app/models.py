@@ -97,6 +97,40 @@ class TransferItem(Base):
     transfer: Mapped[TransferRequest] = relationship(back_populates="items")
 
 
+class Loss(Base):
+    __tablename__ = "losses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    label: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32), default="em_andamento")
+    loss_date: Mapped[date] = mapped_column(Date, default=date.today)
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    total_weight: Mapped[float] = mapped_column(Float, default=0)
+    total_price: Mapped[float] = mapped_column(Float, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    items: Mapped[list["LossItem"]] = relationship(
+        back_populates="loss", cascade="all, delete-orphan"
+    )
+
+
+class LossItem(Base):
+    __tablename__ = "loss_items"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=new_id)
+    barcode: Mapped[str] = mapped_column(String(32))
+    product_code: Mapped[str] = mapped_column(String(20))
+    product_name: Mapped[str] = mapped_column(String(255))
+    weight_kg: Mapped[float] = mapped_column(Float)
+    unit_price: Mapped[float] = mapped_column(Float)
+    total_price: Mapped[float] = mapped_column(Float)
+    loss_id: Mapped[str] = mapped_column(String(36), ForeignKey("losses.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    loss: Mapped[Loss] = relationship(back_populates="items")
+
+
 class AppSettings(Base):
     __tablename__ = "app_settings"
 

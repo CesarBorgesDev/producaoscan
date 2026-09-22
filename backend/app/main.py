@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
 from .database import Base, engine, ensure_schema
-from .routers import import_data, productions, products, settings as settings_router, transfers
+from .routers import import_data, losses, productions, products, settings as settings_router, transfers
 from .services.pg_import import get_or_create_settings
 from .database import SessionLocal
 
@@ -31,6 +31,7 @@ app.add_middleware(
 app.include_router(products.router)
 app.include_router(productions.router)
 app.include_router(transfers.router)
+app.include_router(losses.router)
 app.include_router(settings_router.router)
 app.include_router(import_data.router)
 

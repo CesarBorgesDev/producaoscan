@@ -21,3 +21,11 @@ String todayISO() {
       '${now.month.toString().padLeft(2, '0')}-'
       '${now.day.toString().padLeft(2, '0')}';
 }
+
+double? parseWeightKg(String raw) {
+  final value = raw.trim().replaceAll(RegExp(r'\s+'), '').replaceAll(',', '.');
+  if (value.isEmpty) return null;
+  final n = double.tryParse(value);
+  if (n == null || n <= 0) return null;
+  return (n * 1000).round() / 1000;
+}
