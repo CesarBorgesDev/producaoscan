@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { Save, Database, Server, Wifi, CloudDownload, Upload, Trash2 } from "lucide-react";
+import { Save, Database, Server, Wifi, CloudDownload, Factory, Upload, Trash2 } from "lucide-react";
 
 const defaults = {
   pg_host: "",
@@ -91,15 +91,23 @@ export default function Configuracoes() {
     }
   };
 
-  const handleImportPg = async () => {
+  const handleImportUniplus = async (scope) => {
+    const ownOnly = scope === "own";
+    const confirmed = window.confirm(
+      ownOnly
+        ? "Buscar somente produtos de produção própria do Uniplus (ippt = P) e atualizar o cadastro local?"
+        : "Buscar todos os produtos do cadastro Uniplus e atualizar o cadastro local?"
+    );
+    if (!confirmed) return;
     setBusy(true);
     try {
       await api.saveSettings(payload());
-      const result = await api.importFromPostgres(form.source_table.trim());
+      const result = await api.importFromPostgres(form.source_table.trim(), scope);
+      const label = ownOnly ? "produção própria" : "todo o cadastro";
       setStatus(
-        `Importação PostgreSQL: ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.`
+        `Uniplus (${label}): ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.`
       );
-      toast({ title: "Catálogo importado" });
+      toast({ title: ownOnly ? "Produção própria importada" : "Cadastro Uniplus importado" });
     } catch (err) {
       setStatus(err.message);
       toast({ title: "Erro na importação", description: err.message, variant: "destructive" });
@@ -238,14 +246,18 @@ export default function Configuracoes() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="source_table">Tabela de origem</Label>
+                <Label htmlFor="source_table">Tabela de origem (Uniplus)</Label>
                 <Input
                   id="source_table"
                   value={form.source_table}
                   onChange={(e) => setForm({ ...form, source_table: e.target.value })}
-                  placeholder="catalogo_origem"
+                  placeholder="produto"
                   className="font-mono"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Use a tabela <span className="font-mono">produto</span> do Uniplus. Buscar todos
+                  importa o cadastro completo; produção própria filtra <span className="font-mono">ippt = P</span>.
+                </p>
               </div>
 
               <div className="flex flex-wrap gap-2 pt-2">
@@ -257,40 +269,87 @@ export default function Configuracoes() {
                   <Wifi className="w-4 h-4" />
                   Testar conexão
                 </Button>
-                <Button type="button" disabled={busy} onClick={handleImportPg} className="gap-2">
-                  <CloudDownload className="w-4 h-4" />
-                  Importar do PostgreSQL
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  className="gap-2"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4" />
-                  Importar CSV/JSON
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={busy}
-                  className="gap-2 text-destructive hover:text-destructive"
-                  onClick={handleDeleteProducts}
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Apagar produtos
-                </Button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept=".csv,.json,text/csv,application/json"
-                  className="hidden"
-                  onChange={handleImportFile}
-                />
               </div>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <CloudDownload className="w-4 h-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Cadastro Uniplus</CardTitle>
+              <CardDescription>
+                Busque os produtos da tabela <span className="font-mono">produto</span> e atualize o
+                cadastro local.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={busy || loading}
+              onClick={() => handleImportUniplus("all")}
+              className="text-left rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <CloudDownload className="w-4 h-4 text-primary" />
+                Buscar todos os produtos
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Importa o cadastro completo do Uniplus, inclusive itens de terceiros.
+              </p>
+            </button>
+            <button
+              type="button"
+              disabled={busy || loading}
+              onClick={() => handleImportUniplus("own")}
+              className="text-left rounded-xl border border-slate-200 bg-white p-4 transition hover:border-primary/40 hover:bg-primary/5 disabled:opacity-50"
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <Factory className="w-4 h-4 text-primary" />
+                Somente produção própria
+              </div>
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Importa só os produtos com <span className="font-mono">ippt = P</span>.
+              </p>
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              className="gap-2"
+              onClick={() => fileRef.current?.click()}
+            >
+              <Upload className="w-4 h-4" />
+              Importar CSV/JSON
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={handleDeleteProducts}
+            >
+              <Trash2 className="w-4 h-4" />
+              Apagar produtos
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".csv,.json,text/csv,application/json"
+              className="hidden"
+              onChange={handleImportFile}
+            />
+          </div>
         </CardContent>
       </Card>
 

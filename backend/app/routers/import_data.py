@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -10,9 +10,13 @@ router = APIRouter(prefix="/api/import", tags=["import"])
 
 
 @router.post("/postgresql", response_model=ImportResult)
-def import_postgresql(table: str | None = None, db: Session = Depends(get_db)):
+def import_postgresql(
+    table: str | None = None,
+    scope: str = Query("own", pattern="^(all|own)$"),
+    db: Session = Depends(get_db),
+):
     try:
-        return import_from_postgresql(db, table)
+        return import_from_postgresql(db, table, own_production_only=scope == "own")
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     except Exception as exc:

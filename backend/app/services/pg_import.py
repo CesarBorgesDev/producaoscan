@@ -103,10 +103,16 @@ def _normalize_row(row: dict[str, Any]) -> dict | None:
     }
 
 
-def upsert_products(db: Session, rows: list[dict], source: str, filename: str) -> dict:
+def upsert_products(
+    db: Session,
+    rows: list[dict],
+    source: str,
+    filename: str,
+    own_production_only: bool = True,
+) -> dict:
     imported = updated = skipped = 0
     for raw in rows:
-        if not _ippt_allows_import(raw):
+        if own_production_only and not _ippt_allows_import(raw):
             skipped += 1
             continue
         data = _normalize_row(raw)
@@ -140,9 +146,20 @@ def upsert_products(db: Session, rows: list[dict], source: str, filename: str) -
     }
 
 
-def import_from_postgresql(db: Session, table_name: str | None = None) -> dict:
+def _resolve_uniplus_table(cfg: AppSettings, table_name: str | None) -> str:
+    table = (table_name or cfg.source_table or "produto").strip()
+    if table.lower() in {"catalogo_origem", ""}:
+        return "produto"
+    return table
+
+
+def import_from_postgresql(
+    db: Session,
+    table_name: str | None = None,
+    own_production_only: bool = True,
+) -> dict:
     cfg = get_or_create_settings(db)
-    table = (table_name or cfg.source_table or "catalogo_origem").strip()
+    table = _resolve_uniplus_table(cfg, table_name)
     if not table.replace("_", "").isalnum():
         raise ValueError("Nome de tabela inválido.")
 
@@ -160,21 +177,31 @@ def import_from_postgresql(db: Session, table_name: str | None = None) -> dict:
             if not columns:
                 raise ValueError(f"Tabela '{table}' não encontrada.")
             ippt_col = next((col for col in columns if col.lower() == "ippt"), None)
-            if not ippt_col:
-                raise ValueError(
-                    f"A tabela '{table}' não possui o campo ippt. "
-                    "A importação inclui somente produtos com ippt = P."
+            if own_production_only:
+                if not ippt_col:
+                    raise ValueError(
+                        f"A tabela '{table}' não possui o campo ippt. "
+                        "Não é possível filtrar produção própria (ippt = P)."
+                    )
+                cur.execute(
+                    sql.SQL("SELECT * FROM {} WHERE UPPER(BTRIM({}::text)) = 'P'").format(
+                        sql.Identifier(table),
+                        sql.Identifier(ippt_col),
+                    )
                 )
-            cur.execute(
-                sql.SQL("SELECT * FROM {} WHERE UPPER(BTRIM({}::text)) = 'P'").format(
-                    sql.Identifier(table),
-                    sql.Identifier(ippt_col),
-                )
-            )
+            else:
+                cur.execute(sql.SQL("SELECT * FROM {}").format(sql.Identifier(table)))
             fetched_cols = [desc[0] for desc in cur.description]
             fetched = [dict(zip(fetched_cols, row)) for row in cur.fetchall()]
 
-    return upsert_products(db, fetched, "postgresql", table)
+    source = "uniplus_own" if own_production_only else "uniplus_all"
+    return upsert_products(
+        db,
+        fetched,
+        source,
+        table,
+        own_production_only=own_production_only,
+    )
 
 
 def parse_file_bytes(filename: str, content: bytes) -> list[dict]:

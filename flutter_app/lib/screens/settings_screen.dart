@@ -98,14 +98,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _importPg() async {
+  Future<void> _importUniplus(String scope) async {
+    final ownOnly = scope == 'own';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(ownOnly ? 'Produção própria' : 'Todos os produtos'),
+        content: Text(
+          ownOnly
+              ? 'Buscar somente produtos de produção própria do Uniplus (ippt = P) e atualizar o cadastro local?'
+              : 'Buscar todos os produtos do cadastro Uniplus e atualizar o cadastro local?',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Buscar')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     setState(() => _busy = true);
     try {
       await ApiClient.instance.setBaseUrl(_apiUrl.text.trim());
       await ApiClient.instance.saveSettings(_form());
-      final result = await ApiClient.instance.importFromPostgres(table: _table.text.trim());
+      final result = await ApiClient.instance.importFromPostgres(
+        table: _table.text.trim(),
+        scope: scope,
+      );
+      final label = ownOnly ? 'produção própria' : 'todo o cadastro';
       _status =
-          'Importação PostgreSQL: ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.';
+          'Uniplus ($label): ${result.imported} novos, ${result.updated} atualizados, ${result.skipped} ignorados.';
     } catch (e) {
       _status = e.toString();
     } finally {
@@ -205,9 +226,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       label: const Text('Testar conexão'),
                     ),
                     FilledButton.tonalIcon(
-                      onPressed: _busy ? null : _importPg,
+                      onPressed: _busy ? null : () => _importUniplus('all'),
                       icon: const Icon(Icons.cloud_download),
-                      label: const Text('Importar do PostgreSQL'),
+                      label: const Text('Buscar todos os produtos'),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _importUniplus('own'),
+                      icon: const Icon(Icons.factory_outlined),
+                      label: const Text('Somente produção própria'),
                     ),
                     OutlinedButton.icon(
                       onPressed: _busy ? null : _importFile,

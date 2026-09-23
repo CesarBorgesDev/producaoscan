@@ -288,11 +288,17 @@ class ApiClient {
     return data as Map<String, dynamic>;
   }
 
-  Future<ImportResult> importFromPostgres({String? table}) async {
-    final path = table == null || table.isEmpty
-        ? '/api/import/postgresql'
-        : '/api/import/postgresql?table=${Uri.encodeQueryComponent(table)}';
-    final data = await _send('POST', path);
+  Future<ImportResult> importFromPostgres({String? table, String scope = 'own'}) async {
+    final params = <String, String>{
+      'scope': scope == 'all' ? 'all' : 'own',
+    };
+    if (table != null && table.isNotEmpty) {
+      params['table'] = table;
+    }
+    final query = params.entries
+        .map((e) => '${Uri.encodeQueryComponent(e.key)}=${Uri.encodeQueryComponent(e.value)}')
+        .join('&');
+    final data = await _send('POST', '/api/import/postgresql?$query');
     return ImportResult.fromJson(data as Map<String, dynamic>);
   }
 

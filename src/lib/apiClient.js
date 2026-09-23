@@ -152,11 +152,12 @@ export const api = {
   getSettings: () => request("/api/settings"),
   saveSettings: (payload) => request("/api/settings", { method: "PUT", body: payload }),
   testConnection: () => request("/api/settings/test-connection", { method: "POST" }),
-  importFromPostgres: (table) =>
-    request(
-      `/api/import/postgresql${table ? `?table=${encodeURIComponent(table)}` : ""}`,
-      { method: "POST" }
-    ),
+  importFromPostgres: (table, scope = "own") => {
+    const params = new URLSearchParams();
+    if (table) params.set("table", table);
+    params.set("scope", scope === "all" ? "all" : "own");
+    return request(`/api/import/postgresql?${params}`, { method: "POST" });
+  },
   async importFile(file) {
     const form = new FormData();
     form.append("file", file);
