@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from ..database import get_db
-from ..models import Production, ProductionItem
+from ..models import Product, Production, ProductionItem
 from ..schemas import (
     DashboardDay,
     DashboardOut,
